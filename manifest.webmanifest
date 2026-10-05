@@ -1,0 +1,21 @@
+{
+ "name": "Pacific Airshow Rental Log",
+ "short_name": "PAHB Rentals",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#0C09A7",
+ "theme_color": "#0C09A7",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  }
+ ]
+}

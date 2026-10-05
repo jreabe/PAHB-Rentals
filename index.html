@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PAHB Rentals">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0C09A7">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Pacific Airshow Rental Log</title>
+<style>
+:root{padding-top:0;padding-bottom:env(safe-area-inset-bottom,0px);-webkit-text-size-adjust:100%%}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: flight-line field form. One column on a phone, two on a tablet. Big controls, high contrast for sun glare.
+   Tabs at the bottom (New / Log / Export), save bar pinned above them. */
+:root{
+  --bg:#eef0f9; --card:#ffffff; --ink:#0f1226; --muted:#4f5574; --line:#c5c9e2;
+  --brand:#0C09A7; --brand-red:#FA0A57;
+  --accent:#0C09A7; --accent-ink:#ffffff; --field:#ffffff;
+  --today:#d6003f; --today-ink:#ffffff; --tomorrow:#f5b700; --tomorrow-ink:#1b1400;
+  --ok:#17794a; --warn-bg:#fff4d6;
+  --font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif;
+  --font-head:'Avenir Next Condensed','Arial Narrow','Helvetica Neue',Arial,sans-serif;
+  --nav-h:64px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0d1f; --card:#151833; --ink:#eef0fb; --muted:#a3a9d0; --line:#2c3260;
+  --accent:#5c58ff; --accent-ink:#ffffff; --brand:#0C09A7; --brand-red:#FA0A57; --field:#0d1028;
+  --today:#ff4d86; --today-ink:#1c0210; --tomorrow:#f5b700; --tomorrow-ink:#1b1400;
+  --ok:#4cc38a; --warn-bg:#3a3010; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b0d1f; --card:#151833; --ink:#eef0fb; --muted:#a3a9d0; --line:#2c3260;
+  --accent:#5c58ff; --accent-ink:#ffffff; --brand:#0C09A7; --brand-red:#FA0A57; --field:#0d1028;
+  --today:#ff4d86; --today-ink:#1c0210; --tomorrow:#f5b700; --tomorrow-ink:#1b1400;
+  --ok:#4cc38a; --warn-bg:#3a3010; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:17px;line-height:1.35;
+  padding-inline:16px;padding-block:0 28px}
+.wrap{max-width:980px;margin-inline:auto}
+button,input,select,textarea{font:inherit;color:inherit}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:calc(env(safe-area-inset-top,0px) + 14px) 14px;flex-wrap:wrap;background:var(--brand);color:#fff;box-shadow:0 0 0 100vmax var(--brand);clip-path:inset(-100vmax -100vmax 0 -100vmax);position:relative;margin-bottom:12px}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--brand-red);box-shadow:0 0 0 100vmax var(--brand-red);clip-path:inset(0 -100vmax 0 -100vmax)}
+.top{padding-bottom:19px}
+.brand{display:flex;align-items:center;gap:14px;min-width:0;flex-wrap:wrap}
+.brand img{height:58px;width:auto;display:block}
+.top .sub{color:rgba(255,255,255,.82)!important}
+.top h1{color:#fff}
+.top .btn,.top .chip{color:#0f1226;background:#fff;border-color:#fff}
+:root[data-theme="dark"] .top .btn,:root[data-theme="dark"] .top .chip{color:#0f1226}
+.top h1{font-family:var(--font-head);font-weight:700;font-size:30px;letter-spacing:.01em;margin:0;line-height:1}
+.top .sub{color:var(--muted);font-size:14px;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:99px;padding:4px 12px;font-size:14px;font-weight:600;background:var(--card);white-space:nowrap}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--ok);display:inline-block}
+.chip.local i{background:var(--tomorrow)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
+.stat b{font-family:var(--font-head);font-size:26px;line-height:1;display:block;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.stat.hot b{color:var(--today)}
+
+/* form */
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:720px){.grid{grid-template-columns:1fr 1fr}.span2{grid-column:1 / -1}}
+fieldset.sec{margin:0;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:14px 14px 16px;min-width:0;display:flex;flex-direction:column;gap:12px}
+fieldset.sec>legend{font-family:var(--font-head);font-weight:700;font-size:20px;letter-spacing:.04em;text-transform:uppercase;padding:0 6px;color:var(--accent)}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f>label,.lab{font-size:14px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=text],input[type=date],input[type=number],select{width:100%;min-height:54px;padding:10px 12px;font-size:18px;border:2px solid var(--line);border-radius:10px;background:var(--field);appearance:none;-webkit-appearance:none}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 22px) 50%,calc(100% - 16px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:38px}
+input[type=date]{min-width:0}
+input:focus,select:focus,button:focus-visible,.seg input:focus-visible+span,.sw input:focus-visible+span{outline:3px solid var(--accent);outline-offset:1px}
+input.unit{font-family:var(--font-head);font-weight:700;font-size:26px;letter-spacing:.08em;text-transform:uppercase}
+.other{margin-top:6px}
+.stepper{display:grid;grid-template-columns:54px 1fr 54px;gap:8px}
+.stepper button{min-height:54px;border:2px solid var(--line);border-radius:10px;background:var(--field);font-size:28px;font-weight:700;cursor:pointer}
+.stepper input{text-align:center;font-weight:700}
+
+/* segmented radios and color swatches */
+.seg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (min-width:720px){.seg.five{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1100px){.seg.five{grid-template-columns:repeat(5,1fr)}}
+.seg label{position:relative;display:block}
+.seg input,.sw input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.seg span{display:flex;align-items:center;justify-content:center;text-align:center;min-height:54px;padding:6px 8px;border:2px solid var(--line);border-radius:10px;font-weight:600;background:var(--field);line-height:1.15}
+.seg input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:480px){.colors{grid-template-columns:repeat(5,1fr)}}
+.sw{position:relative;display:block}
+.sw span{display:flex;align-items:center;gap:8px;min-height:54px;padding:6px 10px;border:2px solid var(--line);border-radius:10px;font-weight:700;font-size:15px;background:var(--field)}
+.sw span b{width:24px;height:24px;border-radius:50%;border:2px solid var(--ink);flex:none}
+.sw input:checked+span{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--field))}
+.makebox{display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 12px;border-radius:10px;border:2px dashed var(--line);background:color-mix(in srgb,var(--accent) 8%,var(--card))}
+.makebox .code{font-family:var(--font-head);font-weight:700;font-size:28px;letter-spacing:.06em;min-width:3.2ch}
+.makebox .nm{color:var(--muted);font-size:15px}
+.toggle{display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 12px;border:2px solid var(--line);border-radius:10px;background:var(--field);font-weight:600;cursor:pointer}
+.toggle input{width:26px;height:26px;accent-color:var(--accent)}
+
+/* action bar */
+.actions{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);margin-top:14px;display:flex;gap:10px;padding:10px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(6px);border-radius:14px;border:1.5px solid var(--line)}
+.btn{min-height:56px;padding:10px 18px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:18px;cursor:pointer;flex:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);flex:1}
+.btn.danger{border-color:var(--today);color:var(--today)}
+.btn.danger.armed{background:var(--today);color:var(--today-ink)}
+.btn:disabled{opacity:.5}
+.editing{background:var(--warn-bg);border:1.5px solid var(--tomorrow);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-weight:600}
+
+/* log */
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tools input[type=text]{flex:1 1 220px}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{min-height:44px;padding:6px 14px;border-radius:99px;border:2px solid var(--line);background:var(--card);font-weight:600;cursor:pointer;font-size:16px}
+.pill[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.cards{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:720px){.cards{grid-template-columns:1fr 1fr}}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;min-width:0}
+.card.t0{border-color:var(--today);box-shadow:inset 6px 0 0 var(--today)}
+.card.t1{border-color:var(--tomorrow);box-shadow:inset 6px 0 0 var(--tomorrow)}
+.card.done{opacity:.62}
+.c-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.c-team{font-weight:700;font-size:19px;min-width:0;overflow-wrap:anywhere}
+.c-num{color:var(--muted);font-weight:600}
+.tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.tag.t0{background:var(--today);color:var(--today-ink)}
+.tag.t1{background:var(--tomorrow);color:var(--tomorrow-ink)}
+.tag.ret{background:var(--ok);color:var(--bg)}
+.c-meta{color:var(--muted);font-size:15px;overflow-wrap:anywhere}
+.c-veh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.c-unit{font-family:var(--font-head);font-weight:700;font-size:22px;letter-spacing:.07em}
+.c-car{font-weight:600}
+.c-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);display:inline-block;vertical-align:-2px;margin-right:4px}
+.c-actions{display:flex;gap:8px;margin-top:4px}
+.c-actions button{min-height:44px;padding:4px 14px;border-radius:10px;border:2px solid var(--line);background:var(--field);font-weight:700;cursor:pointer}
+.empty{border:2px dashed var(--line);border-radius:12px;padding:28px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:20px;margin-bottom:4px}
+
+/* export */
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+.panel h2{font-family:var(--font-head);font-size:22px;letter-spacing:.03em;text-transform:uppercase;margin:0}
+.panel p{margin:0;color:var(--muted);max-width:62ch}
+.panel .btn{align-self:flex-start}
+.panel textarea{width:100%;min-height:90px;border:2px solid var(--line);border-radius:10px;background:var(--field);padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.file{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;align-self:flex-start}
+.file input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+
+/* tabs (sticky at the top) + toast */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 0 10px;margin-bottom:12px;background:var(--bg)}
+.nav button{min-height:56px;border:2px solid var(--line);border-radius:12px;background:var(--card);font-weight:700;font-size:18px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--ink);line-height:1.1;touch-action:manipulation}
+.nav button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:inset 0 -5px 0 var(--brand-red)}
+.nav small{font-weight:600;font-size:12px;opacity:.85}
+.diag{background:var(--today);color:var(--today-ink);border-color:var(--today)}
+.hdr-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hdr-actions .btn{min-height:44px;padding:4px 16px;font-size:16px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;z-index:9;max-width:calc(100% - 32px);text-align:center}
+#toast.bad{background:var(--today);color:var(--today-ink)}
+@media (prefers-reduced-motion:no-preference){#toast{transition:opacity .2s}}
+</style>
+</head>
+<body>
+
+
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img src="logo.png" alt="Pacific Airshow Huntington Beach" width="162" height="58">
+      <div><h1>Rental Log</h1>
+      <div class="sub">JFTB Los Alamitos · rental vehicles by team · <span id="ver"></span></div></div>
+    </div>
+    <div class="hdr-actions">
+      <span class="btn file" id="hdrImport">Import<input type="file" id="imp3" aria-label="Import rows from an Excel file"></span>
+      <span class="chip local" id="sync"><i></i><span id="syncText">Starting…</span></span>
+    </div>
+  </header>
+  <div class="editing" id="nojs">This page needs JavaScript to run. The Files preview does not run it. Open this file in a browser app instead, using Share, then Open in.</div>
+  <div class="editing diag" id="diag" hidden></div>
+  <nav class="nav" role="tablist" aria-label="Sections">
+  <button role="tab" data-tab="new" aria-selected="true" id="tabNew">New entry<small id="tabNewSub">Add a vehicle</small></button>
+  <button role="tab" data-tab="log" aria-selected="false">Log<small id="tabLogSub">0 vehicles</small></button>
+  <button role="tab" data-tab="export" aria-selected="false">Export<small>To Excel</small></button>
+</nav>
+  <div class="stats" id="stats"></div>
+
+  <!-- NEW / EDIT -->
+  <section id="view-new" role="tabpanel">
+    <div class="editing" id="editBanner" hidden></div>
+    <form id="f" autocomplete="off" novalidate>
+      <div class="grid">
+        <fieldset class="sec">
+          <legend>Team</legend>
+          <div class="f"><label for="team">Team / name</label>
+            <select id="team"></select>
+            <input type="text" class="other" id="team-other" placeholder="Type the team name" autocapitalize="words" hidden></div>
+          <div class="f"><span class="lab">Vehicle # for this team</span>
+            <div class="stepper"><button type="button" id="numDn" aria-label="Lower number">−</button>
+              <input type="number" id="num" inputmode="numeric" min="1" value="1"><button type="button" id="numUp" aria-label="Raise number">+</button></div></div>
+        </fieldset>
+
+        <fieldset class="sec">
+          <legend>Pickup</legend>
+          <div class="row2">
+            <div class="f"><label for="pDate">Date</label><input type="date" id="pDate"></div>
+            <div class="f"><label for="pTime">Time</label><select id="pTime"></select><input type="text" class="other" id="pTime-other" placeholder="Type a time" hidden></div>
+          </div>
+          <div class="f"><label for="deliv">Delivery address</label><select id="deliv"></select><input type="text" class="other" id="deliv-other" placeholder="Type a location" hidden></div>
+        </fieldset>
+
+        <fieldset class="sec">
+          <legend>Return</legend>
+          <div class="row2">
+            <div class="f"><label for="rDate">Date</label><input type="date" id="rDate"></div>
+            <div class="f"><label for="rTime">Time</label><select id="rTime"></select><input type="text" class="other" id="rTime-other" placeholder="Type a time" hidden></div>
+          </div>
+          <div class="f"><label for="coll">Collection address</label><select id="coll"></select><input type="text" class="other" id="coll-other" placeholder="Type a location" hidden></div>
+        </fieldset>
+
+        <fieldset class="sec">
+          <legend>Car group</legend>
+          <div class="seg five" id="group" role="radiogroup" aria-label="Car group"></div>
+          <div class="f"><label for="special">Special request</label><select id="special"></select><input type="text" class="other" id="special-other" placeholder="Type a request" hidden></div>
+        </fieldset>
+
+        <fieldset class="sec span2">
+          <legend>Vehicle</legend>
+          <div class="grid" style="gap:12px">
+            <div class="f"><label for="unit">Vehicle unit #</label><input type="text" id="unit" class="unit" placeholder="SN373218" autocapitalize="characters" spellcheck="false"></div>
+            <div class="f"><label for="model">Model</label><select id="model"></select></div>
+            <div class="f" id="newModelBox" hidden>
+              <label for="newModel">New model name</label><input type="text" id="newModel" autocapitalize="characters" placeholder="e.g. CX50">
+              <label for="newMake" style="margin-top:6px">Its make</label><select id="newMake"></select>
+            </div>
+            <div class="f"><span class="lab">Make (fills in from the model)</span>
+              <div class="makebox" id="makeBox" aria-live="polite"><span class="code">—</span><span class="nm">Pick a model</span></div></div>
+          </div>
+          <div class="f"><span class="lab">Color</span><div class="colors" id="colors" role="radiogroup" aria-label="Color"></div></div>
+          <label class="toggle" for="retd"><input type="checkbox" id="retd"> Vehicle returned</label>
+        </fieldset>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn danger" id="del" hidden>Delete</button>
+        <button type="button" class="btn" id="cancel" hidden>Cancel</button>
+        <button type="submit" class="btn primary" id="save">Save entry</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- LOG -->
+  <section id="view-log" role="tabpanel" hidden>
+    <div class="tools">
+      <input type="text" id="q" placeholder="Search team, unit #, model…" inputmode="search">
+      <span class="btn file" style="min-height:54px">Import<input type="file" id="imp2" aria-label="Import rows from an Excel file"></span>
+    </div>
+    <div class="tools"><div class="pills" id="pills"></div></div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <!-- EXPORT -->
+  <section id="view-export" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Send to Excel</h2>
+      <p>Builds a workbook in the same layout as your Rentals sheet, columns A to T, with the make filled in. On an iPad a share sheet opens: choose Save to Files, or Excel to open it right away. Entries live only in this app on this device, so export often.</p>
+      <button class="btn primary" id="xlsx" type="button">Save Excel file</button>
+      <button class="btn" id="csv" type="button">Save as CSV</button>
+      <p id="xlsxNote"></p>
+    </div>
+    <div class="panel">
+      <h2>Copy rows</h2>
+      <p>Copies every entry as tab-separated rows. In Excel, click cell A4 of the Rentals sheet and paste.</p>
+      <button class="btn" id="copy" type="button">Copy rows</button>
+      <textarea id="copyBox" readonly hidden aria-label="Rows to copy"></textarea>
+    </div>
+    <div class="panel">
+      <h2>Import from a spreadsheet</h2>
+      <p>Adds the rows from an Excel file in the Rentals layout. Rows already in the log (same team, unit and pickup date) are skipped.</p>
+      <span class="btn file">Import<input type="file" id="imp"></span>
+      <p id="impNote"></p>
+    </div>
+    <div class="panel">
+      <h2>Paste rows instead</h2>
+      <p>If choosing a file does not work, open the spreadsheet, select the rows (columns A to T), copy them, then paste here and tap the button.</p>
+      <textarea id="pasteBox" aria-label="Pasted rows" placeholder="Paste copied rows here" style="min-height:120px"></textarea>
+      <button class="btn primary" id="pasteGo" type="button">Import pasted rows</button>
+      <p id="pasteNote"></p>
+    </div>
+  </section>
+</div>
+
+<div id="toast" role="status" hidden></div>
+
+
+<script>
+(function(){
+'use strict';
+/* ---------- built-in Excel reader and writer (no outside libraries) ---------- */
+var MiniXlsx=(function(){
+  var CRC_T=(function(){var t=[],c,n,k;for(n=0;n<256;n++){c=n;for(k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0}return t})();
+  function crc32(u8){var c=0xFFFFFFFF;for(var i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+  function utf8(s){
+    if(typeof TextEncoder!=='undefined')return new TextEncoder().encode(s);
+    var e=unescape(encodeURIComponent(s)),u=new Uint8Array(e.length);for(var i=0;i<e.length;i++)u[i]=e.charCodeAt(i);return u;
+  }
+  function fromUtf8(u8){
+    if(typeof TextDecoder!=='undefined')return new TextDecoder('utf-8').decode(u8);
+    var s='';for(var i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);try{return decodeURIComponent(escape(s))}catch(e){return s}
+  }
+
+  /* ----- zip (store only) ----- */
+  function zipStore(files,mime){
+    var parts=[],central=[],offset=0,cdSize=0;
+    files.forEach(function(f){
+      var nameB=utf8(f.name),data=f.data,crc=crc32(data),sz=data.length;
+      var lh=new Uint8Array(30+nameB.length),dv=new DataView(lh.buffer);
+      dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0x0800,true);dv.setUint16(8,0,true);
+      dv.setUint16(10,0,true);dv.setUint16(12,0x21,true);
+      dv.setUint32(14,crc,true);dv.setUint32(18,sz,true);dv.setUint32(22,sz,true);dv.setUint16(26,nameB.length,true);dv.setUint16(28,0,true);
+      lh.set(nameB,30);parts.push(lh,data);
+      var ch=new Uint8Array(46+nameB.length),cv=new DataView(ch.buffer);
+      cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0x0800,true);cv.setUint16(10,0,true);
+      cv.setUint16(12,0,true);cv.setUint16(14,0x21,true);cv.setUint32(16,crc,true);cv.setUint32(20,sz,true);cv.setUint32(24,sz,true);
+      cv.setUint16(28,nameB.length,true);cv.setUint32(42,offset,true);
+      ch.set(nameB,46);central.push(ch);cdSize+=ch.length;offset+=lh.length+sz;
+    });
+    var end=new Uint8Array(22),ev=new DataView(end.buffer);
+    ev.setUint32(0,0x06054b50,true);ev.setUint16(8,files.length,true);ev.setUint16(10,files.length,true);ev.setUint32(12,cdSize,true);ev.setUint32(16,offset,true);
+    return new Blob(parts.concat(central,[end]),{type:mime});
+  }
+
+  /* ----- inflate (raw deflate) ----- */
+  var LENS=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  var LEXT=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  var DISTS=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  var DEXT=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+  var CLORD=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+  function huff(lengths,start,n){
+    var count=new Uint16Array(16),symbol=new Uint16Array(n),offs=new Uint16Array(16),i;
+    for(i=0;i<n;i++)count[lengths[start+i]]++;
+    for(i=1;i<15;i++)offs[i+1]=offs[i]+count[i];
+    for(i=0;i<n;i++){var l=lengths[start+i];if(l!==0)symbol[offs[l]++]=i}
+    return {count:count,symbol:symbol};
+  }
+  function inflate(src,outSize){
+    var out=new Uint8Array(outSize),op=0,pos=0,bb=0,bc=0;
+    function bits(need){
+      while(bc<need){if(pos>=src.length)throw new Error('unexpected end of data');bb|=src[pos++]<<bc;bc+=8}
+      var v=bb&((1<<need)-1);bb>>>=need;bc-=need;return v;
+    }
+    function decode(h){
+      var code=0,first=0,index=0;
+      for(var len=1;len<=15;len++){
+        code|=bits(1);var c=h.count[len];
+        if(code-c<first)return h.symbol[index+(code-first)];
+        index+=c;first+=c;first<<=1;code<<=1;
+      }
+      throw new Error('bad compressed data');
+    }
+    var fixedL=null,fixedD=null;
+    function codes(lc,dc){
+      for(;;){
+        var sym=decode(lc);
+        if(sym<256){if(op>=out.length)throw new Error('too much data');out[op++]=sym}
+        else if(sym===256)return;
+        else{
+          sym-=257;if(sym>=29)throw new Error('bad length');
+          var len=LENS[sym]+bits(LEXT[sym]);
+          var ds=decode(dc);if(ds>=30)throw new Error('bad distance');
+          var dist=DISTS[ds]+bits(DEXT[ds]);
+          if(dist>op)throw new Error('bad distance');
+          if(op+len>out.length)throw new Error('too much data');
+          while(len--){out[op]=out[op-dist];op++}
+        }
+      }
+    }
+    var last;
+    do{
+      last=bits(1);var type=bits(2);
+      if(type===0){
+        bb=0;bc=0;var ln=src[pos]|(src[pos+1]<<8);pos+=4;
+        for(var i=0;i<ln;i++)out[op++]=src[pos++];
+      }else if(type===1){
+        if(!fixedL){
+          var l=new Uint8Array(288),k;for(k=0;k<144;k++)l[k]=8;for(;k<256;k++)l[k]=9;for(;k<280;k++)l[k]=7;for(;k<288;k++)l[k]=8;
+          fixedL=huff(l,0,288);var d=new Uint8Array(30);for(k=0;k<30;k++)d[k]=5;fixedD=huff(d,0,30);
+        }
+        codes(fixedL,fixedD);
+      }else if(type===2){
+        var nlen=bits(5)+257,ndist=bits(5)+1,ncode=bits(4)+4,lengths=new Uint8Array(320),idx;
+        for(idx=0;idx<ncode;idx++)lengths[CLORD[idx]]=bits(3);
+        var clh=huff(lengths,0,19);
+        lengths=new Uint8Array(320);idx=0;
+        while(idx<nlen+ndist){
+          var s=decode(clh);
+          if(s<16)lengths[idx++]=s;
+          else{
+            var prev=0,rep;
+            if(s===16){if(idx===0)throw new Error('bad lengths');prev=lengths[idx-1];rep=3+bits(2)}
+            else if(s===17)rep=3+bits(3);else rep=11+bits(7);
+            while(rep--)lengths[idx++]=prev;
+          }
+        }
+        codes(huff(lengths,0,nlen),huff(lengths,nlen,ndist));
+      }else throw new Error('bad block');
+    }while(!last);
+    return out;
+  }
+
+  /* ----- zip reader ----- */
+  function unzip(buf){
+    var u8=new Uint8Array(buf),dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength),i,files={};
+    for(i=u8.length-22;i>=0;i--){if(dv.getUint32(i,true)===0x06054b50)break}
+    if(i<0)throw new Error('not a zip file');
+    var count=dv.getUint16(i+10,true),p=dv.getUint32(i+16,true);
+    for(var n=0;n<count;n++){
+      if(dv.getUint32(p,true)!==0x02014b50)throw new Error('bad zip directory');
+      var method=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),usz=dv.getUint32(p+24,true);
+      var nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+      var name=fromUtf8(u8.subarray(p+46,p+46+nl));
+      var ln=dv.getUint16(lo+26,true),le=dv.getUint16(lo+28,true),ds=lo+30+ln+le;
+      files[name]={method:method,csz:csz,usz:usz,start:ds};
+      p+=46+nl+el+cl;
+    }
+    return {get:function(name){
+      var f=files[name];if(!f)return null;
+      var raw=u8.subarray(f.start,f.start+f.csz);
+      if(f.method===0)return raw;
+      if(f.method===8)return inflate(raw,f.usz);
+      throw new Error('unsupported compression');
+    },names:Object.keys(files)};
+  }
+
+  /* ----- xml helpers ----- */
+  function xesc(s){return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function colName(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
+  function colIndex(ref){var m=/^([A-Z]+)/.exec(ref);if(!m)return 0;var n=0,t=m[1];for(var i=0;i<t.length;i++)n=n*26+(t.charCodeAt(i)-64);return n-1}
+
+  /* ----- writer ----- */
+  var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+  '<numFmts count="1"><numFmt numFmtId="164" formatCode="dd\\-mmm\\-yy"/></numFmts>'+
+  '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>'+
+  '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F3864"/><bgColor indexed="64"/></patternFill></fill></fills>'+
+  '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF999999"/></left><right style="thin"><color rgb="FF999999"/></right><top style="thin"><color rgb="FF999999"/></top><bottom style="thin"><color rgb="FF999999"/></bottom><diagonal/></border></borders>'+
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+  '<cellXfs count="4">'+
+  '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>'+
+  '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>'+
+  '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'+
+  '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>'+
+  '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+  /* cell spec: a plain string/number, or {v:value, d:true} for a date serial. opts.headerRows = how many rows use the header style */
+  function write(rows,opts){
+    opts=opts||{};var headerRows=opts.headerRows||0,dateCols=opts.dateCols||[],centerCols=opts.centerCols||[];
+    var sd='',maxc=0;
+    rows.forEach(function(r,ri){
+      var cells='';
+      if(r.length>maxc)maxc=r.length;
+      for(var ci=0;ci<r.length;ci++){
+        var v=r[ci],ref=colName(ci)+(ri+1),st;
+        if(ri<headerRows)st=2;else if(dateCols.indexOf(ci)>=0)st=1;else if(centerCols.indexOf(ci)>=0)st=3;else st=0;
+        if(v===''||v==null){cells+='<c r="'+ref+'" s="'+st+'"/>';continue}
+        if(typeof v==='number')cells+='<c r="'+ref+'" s="'+st+'"><v>'+v+'</v></c>';
+        else cells+='<c r="'+ref+'" s="'+st+'" t="inlineStr"><is><t xml:space="preserve">'+xesc(v)+'</t></is></c>';
+      }
+      sd+='<row r="'+(ri+1)+'"'+(ri<headerRows?' ht="30" customHeight="1"':'')+'>'+cells+'</row>';
+    });
+    var cols='';
+    if(opts.widths){cols='<cols>';opts.widths.forEach(function(w,i){cols+='<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'});cols+='</cols>'}
+    var merges='';
+    if(opts.merges&&opts.merges.length){merges='<mergeCells count="'+opts.merges.length+'">'+opts.merges.map(function(m){return '<mergeCell ref="'+m+'"/>'}).join('')+'</mergeCells>'}
+    var pane='';
+    if(opts.freeze){pane='<pane xSplit="'+opts.freeze[0]+'" ySplit="'+opts.freeze[1]+'" topLeftCell="'+colName(opts.freeze[0])+(opts.freeze[1]+1)+'" activePane="bottomRight" state="frozen"/>'}
+    var sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:'+colName(Math.max(maxc,1)-1)+rows.length+'"/>'+
+      '<sheetViews><sheetView workbookViewId="0">'+pane+'</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+sd+'</sheetData>'+merges+
+      '<pageMargins left="0.5" right="0.5" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>';
+    var name=opts.sheetName||'Sheet1';
+    var files=[
+      {name:'[Content_Types].xml',data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>')},
+      {name:'_rels/.rels',data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>')},
+      {name:'xl/workbook.xml',data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="'+xesc(name)+'" sheetId="1" r:id="rId1"/></sheets></workbook>')},
+      {name:'xl/_rels/workbook.xml.rels',data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>')},
+      {name:'xl/styles.xml',data:utf8(STYLES)},
+      {name:'xl/worksheets/sheet1.xml',data:utf8(sheet)}
+    ];
+    return zipStore(files,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  }
+
+  /* ----- reader ----- */
+  function parseXml(u8){
+    var doc=new DOMParser().parseFromString(fromUtf8(u8),'application/xml');
+    if(doc.getElementsByTagName('parsererror').length)throw new Error('could not read the spreadsheet XML');
+    return doc;
+  }
+  function kids(el,name){var out=[];for(var c=el.firstChild;c;c=c.nextSibling){if(c.nodeType===1&&c.localName===name)out.push(c)}return out}
+  function textOf(el){
+    var s='';
+    for(var c=el.firstChild;c;c=c.nextSibling){
+      if(c.nodeType!==1)continue;
+      if(c.localName==='t')s+=c.textContent;
+      else if(c.localName==='r'){kids(c,'t').forEach(function(t){s+=t.textContent})}
+    }
+    return s;
+  }
+  function attr(tag,name){var m=new RegExp('\\b'+name+'="([^"]*)"').exec(tag);return m?m[1]:null}
+  /* returns an array of rows (arrays) for the preferred sheet name, else the first sheet */
+  function read(buf,preferred){
+    var zip=unzip(buf);
+    var wbBytes=zip.get('xl/workbook.xml'),relBytes=zip.get('xl/_rels/workbook.xml.rels');
+    if(!wbBytes||!relBytes)throw new Error('This is not an Excel (.xlsx) file. If it is a Numbers file, export it to Excel first.');
+    var wbXml=fromUtf8(wbBytes),relsXml=fromUtf8(relBytes);
+    var sheets=[],m,re=/<sheet\b[^>]*>/g;
+    while((m=re.exec(wbXml))){var tag=m[0];sheets.push({name:attr(tag,'name'),rid:attr(tag,'r:id')})}
+    if(!sheets.length)throw new Error('no sheets found');
+    var pick=sheets[0];
+    sheets.forEach(function(s){if(preferred&&s.name===preferred)pick=s});
+    var target=null;re=/<Relationship\b[^>]*>/g;
+    while((m=re.exec(relsXml))){if(attr(m[0],'Id')===pick.rid){target=attr(m[0],'Target')}}
+    if(!target)throw new Error('sheet file not found');
+    target=target.charAt(0)==='/'?target.slice(1):'xl/'+target;
+    var shared=[],ss=zip.get('xl/sharedStrings.xml');
+    if(ss){var sd=parseXml(ss),sis=sd.getElementsByTagName('si');for(var i=0;i<sis.length;i++)shared.push(textOf(sis[i]))}
+    var sheetDoc=parseXml(zip.get(target)),rowEls=sheetDoc.getElementsByTagName('row'),out=[],maxc=0;
+    for(var r=0;r<rowEls.length;r++){
+      var cs=kids(rowEls[r],'c'),rn=parseInt(rowEls[r].getAttribute('r'),10)||(out.length+1),row=out[rn-1]||[];
+      for(var c=0;c<cs.length;c++){
+        var cell=cs[c],ref=cell.getAttribute('r'),ci=ref?colIndex(ref):c,t=cell.getAttribute('t'),vEl=kids(cell,'v')[0],val='';
+        if(t==='inlineStr'){var is=kids(cell,'is')[0];val=is?textOf(is):''}
+        else if(vEl){
+          var raw=vEl.textContent;
+          if(t==='s')val=shared[parseInt(raw,10)]||'';
+          else if(t==='str'||t==='d')val=raw;
+          else if(t==='b')val=raw==='1'?1:0;
+          else if(t==='e')val='';
+          else{var num=parseFloat(raw);val=isNaN(num)?raw:num}
+        }
+        row[ci]=val;if(ci+1>maxc)maxc=ci+1;
+      }
+      out[rn-1]=row;
+    }
+    for(var k=0;k<out.length;k++){
+      var rr=out[k]||[];for(var j=0;j<maxc;j++){if(rr[j]===undefined)rr[j]=''}out[k]=rr;
+    }
+    return out;
+  }
+
+  /* ----- csv / tsv ----- */
+  function parseCsv(text){
+    text=text.replace(/^﻿/,'');
+    var first=text.split(/\r?\n/)[0]||'',delim=(first.indexOf('\t')>=0)?'\t':',';
+    var rows=[],row=[],cur='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text.charAt(i);
+      if(q){
+        if(ch==='"'){if(text.charAt(i+1)==='"'){cur+='"';i++}else q=false}else cur+=ch;
+      }else if(ch==='"')q=true;
+      else if(ch===delim){row.push(cur);cur=''}
+      else if(ch==='\n'){row.push(cur);rows.push(row);row=[];cur=''}
+      else if(ch==='\r'){}
+      else cur+=ch;
+    }
+    if(cur!==''||row.length){row.push(cur);rows.push(row)}
+    return rows;
+  }
+  function toCsv(rows){
+    return rows.map(function(r){return r.map(function(v){v=(v==null?'':String(v));return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')}).join('\r\n');
+  }
+  return {write:write,read:read,parseCsv:parseCsv,toCsv:toCsv,isZip:function(buf){var u=new Uint8Array(buf);return u.length>3&&u[0]===0x50&&u[1]===0x4b}};
+})();
+
+/* ---------- reference lists ---------- */
+var MAKES={NSN:'Nissan',GMC:'GMC',CHY:'Chevrolet',CHR:'Chrysler',JEEP:'Jeep',MIT:'Mitsubishi',FRD:'Ford',TOY:'Toyota',BUC:'Buick',DOG:'Dodge',HDA:'Honda',KIA:'Kia',MAZDA:'Mazda'};
+var BASE_MODELS={ALTIMA:'NSN',ROGUE:'NSN',TERRAIN:'GMC',MALIBU:'CHY',BLAZER:'CHY',EQUINOX:'CHY',PACIFICA:'CHR',WRANGLER:'JEEP',WAGONEER:'JEEP',OUTLANDER:'MIT',ESCAPE:'FRD',F250:'FRD',CAMRY:'TOY',RAV4:'TOY',ENVISTA:'BUC',ENCORE:'BUC',CHARGER:'DOG',DURANGO:'DOG',ODYSSEY:'HDA',CARNIVAL:'KIA',CX50:'MAZDA'};
+var COLORS=[['BLK','Black','#111111'],['BLU','Blue','#1f5fbf'],['GLD','Gold','#c9a227'],['GRN','Green','#2e8b57'],['GRY','Gray','#8a9099'],['RED','Red','#d32f2f'],['SIL','Silver','#c3c8d0'],['WHT','White','#ffffff'],['YEL','Yellow','#f2d600']];
+var GROUPS=[['','Not set'],['S','Sedan'],['M','Mini Van / SUV'],['V','15-pax Van'],['O','Other']];
+var TIMES=['8:00AM','9:00AM','10:00AM','11:00AM','12:00PM','1:00PM','2:00PM','3:00PM','4:00PM','5:00PM'];
+var LOCS=['JFTB-Los Alamitos','LAX','LGB-Signature FBO','Enterprise-Hanford','Enterprise-San Diego'];
+var SPECIAL=['*','Truck','SUV','Lg SUV','Prem Larg SUV','Midsize SUV','Mini','cargo van'];
+var TEAMS=["Thunderbird 1", "Thunderbird 2", "Thunderbird 3", "Thunderbird 4", "Thunderbird 5", "Thunderbird 6", "Thunderbird 7", "Thunderbird 8", "Thunderbird 9", "Thunderbird 10", "Thunderbird 11", "Thunderbird 12", "Thunderbird 13", "Thunderbird 14", "Thunderbird 15", "Thunderbird 16", "Thunderbird 17", "Thunderbird 18", "Thunderbird 19", "Thunderbird 20", "Thunderbird 21", "Thunderbird 22", "Thunderbird 23", "Thunderbird 24", "Thunderbird 25", "Thunderbird 26", "Thunderbird 27", "Thunderbird 28", "Thunderbird 29", "Thunderbird 30", "Thunderbird 31", "Thunderbird 32", "Thunderbird 33", "Thunderbird 34", "Thunderbird 1 TRUCK (towing)", "Canadian Snowbirds 1", "Canadian Snowbirds 2", "Canadian Snowbirds 3", "Canadian Snowbirds 4", "Canadian Snowbirds 5", "Canadian Snowbirds 6", "Canadian Snowbirds 7", "Canadian Snowbirds 8", "Canadian Snowbirds 9", "Canadian Snowbirds 10", "Canadian Snowbirds 11", "Canadian Snowbirds 12", "USAF Wings of Blue", "Bob Carlton FoxJet Sailplane", "USAF F-22 Demo 1", "USAF F-22 Demo 2", "USAF Heritage Flight", "MV-22 (VMM-164) 1", "MV-22 (VMM-164) 2", "MV-22 (VMM-164) 3", "USAF F-22 Demo 3", "USAF F-22 Demo 4", "USAF F-22 Demo 5", "USAF F-22 Demo 6", "Canadian Snowbirds 13", "Canadian Snowbirds 14", "NASA 1", "NASA 2", "NASA 3", "USN F-35C Demo Team 1", "USN F-35C Demo Team 2", "USN F-35C Demo Team 3", "West Coast Rhino Demo 1", "West Coast Rhino Demo 2", "West Coast Rhino Demo 3", "West Coast Rhino Demo 4", "USN F-35C Demo Team 4", "RAF Falcons 1 (Martin White)**", "RAF Falcons 2 (Mark Clayton)", "RAF Falcons 3 (Luke Mees)", "RAF Falcons 4 (Edmund Dyson)", "RAF Falcons 5 (Adam Foster)"]; // team names from the Rentals spreadsheet
+var COLOR_HEX={};COLORS.forEach(function(c){COLOR_HEX[c[0]]=c[2]});
+
+/* ---------- small helpers ---------- */
+var $=function(id){return document.getElementById(id)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function pad(n){return n<10?'0'+n:''+n}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function today(){return ymd(new Date())}
+function addDays(s,n){var p=s.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]+n);return ymd(d)}
+var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function short(s){if(!s)return '';var p=s.split('-');return (+p[2])+' '+MON[+p[1]-1]}
+function dmy(s){if(!s)return '';var p=s.split('-');return pad(+p[2])+'-'+MON[+p[1]-1]+'-'+p[0].slice(2)}
+function serial(s){var p=s.split('-');return Math.round((Date.UTC(+p[0],+p[1]-1,+p[2])-Date.UTC(1899,11,30))/86400000)}
+function fromSerial(n){var d=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())}
+function normTime(t){if(typeof t==='number'&&t>0&&t<1){var mn=Math.round(t*1440),hh=Math.floor(mn/60),m2=mn%60;return ((hh%12)||12)+':'+pad(m2)+(hh>=12?'PM':'AM')}t=String(t==null?'':t).trim();return /^12:?00\s*(N|NOON)$/i.test(t)?'12:00PM':t}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
+var toastTimer;
+function toast(msg,bad){var t=$('toast');t.textContent=msg;t.className=bad?'bad':'';t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.hidden=true},bad?4200:2200)}
+
+/* ---------- state ---------- */
+var entries=[];            // {id, team, num, pDate, pTime, deliv, rDate, rTime, coll, group, special, unit, model, make, color, retd, order}
+var customModels={};       // model -> make code
+var editingId=null, filter='all', query='';
+var store={mode:'local', ready:false, col:null, mcol:null};
+
+function allModels(){var m={};for(var k in BASE_MODELS)m[k]=BASE_MODELS[k];for(var j in customModels)m[j]=customModels[j];return m}
+function makeFor(model){var m=allModels()[(model||'').trim().toUpperCase()];return m||''}
+function makeName(code){return MAKES[code]||code||''}
+
+/* ---------- storage: this device only ---------- */
+var SEED=[];
+var memOnly=false,dirty=0;
+function newId(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function saveLocal(){
+  var ok=lsSet('pahb.entries',JSON.stringify(entries));
+  lsSet('pahb.models',JSON.stringify(customModels));lsSet('pahb.dirty',String(dirty));
+  if(!ok&&!memOnly){memOnly=true;setSync()}
+}
+function loadLocal(){
+  try{entries=JSON.parse(lsGet('pahb.entries')||'[]')||[]}catch(e){entries=[]}
+  try{customModels=JSON.parse(lsGet('pahb.models')||'{}')||{}}catch(e){customModels={}}
+  dirty=parseInt(lsGet('pahb.dirty')||'0',10)||0;
+  entries.forEach(function(o){o.pTime=normTime(o.pTime);o.rTime=normTime(o.rTime)});
+}
+function setSync(){
+  var c=$('sync');c.className='chip'+(memOnly?' local':'');
+  $('syncText').textContent=memOnly?'Not remembered. Export before closing':(dirty?'Saved here · '+dirty+' not exported':'Saved on this device');
+}
+function changed(){dirty++;saveLocal();setSync()}
+function putEntry(e){
+  var i=entries.findIndex(function(x){return x.id===e.id});
+  if(i>=0)entries[i]=e;else entries.push(e);
+  renderAll();changed();return Promise.resolve();
+}
+function removeEntry(id){entries=entries.filter(function(x){return x.id!==id});renderAll();changed();return Promise.resolve()}
+function putModel(name,make){customModels[name]=make;fillModelSelect();changed();return Promise.resolve()}
+function initStore(){
+  var probe=lsSet('pahb.probe','1');if(!probe)memOnly=true;
+  loadLocal();
+  if(entries.length===0&&(memOnly||lsGet('pahb.seeded')!=='1')){
+    entries=SEED.map(function(d){var o={};for(var k in d)o[k]=d[k];return o});
+    if(!memOnly){lsSet('pahb.seeded','1');saveLocal()}
+  }
+  setSync();renderAll();
+}
+
+/* ---------- form construction ---------- */
+function opts(list,blank){var h=blank?'<option value="">—</option>':'';list.forEach(function(v){h+='<option value="'+esc(v)+'">'+esc(v)+'</option>'});return h+'<option value="__other">Other…</option>'}
+function wireOther(id){var s=$(id),o=$(id+'-other');s.addEventListener('change',function(){o.hidden=s.value!=='__other';if(!o.hidden)o.focus()})}
+function getVal(id){var s=$(id);return s.value==='__other'?$(id+'-other').value.trim():s.value}
+function setVal(id,v){var s=$(id),o=$(id+'-other');v=v||'';
+  var has=Array.prototype.some.call(s.options,function(x){return x.value===v&&x.value!=='__other'});
+  if(has){s.value=v;o.hidden=true;o.value=''}else{s.value='__other';o.hidden=false;o.value=v}}
+function fillModelSelect(){
+  var m=allModels(),keep=$('model').value,names=Object.keys(m).sort();
+  var cur=(editingId&&(entries.find(function(x){return x.id===editingId})||{}).model)||'';
+  if(cur&&names.indexOf(cur)<0)names.push(cur);
+  var h='<option value="">Choose a model</option>';
+  names.forEach(function(n){h+='<option value="'+esc(n)+'">'+esc(n)+(m[n]?'  ·  '+esc(makeName(m[n])):'')+'</option>'});
+  h+='<option value="__new">＋ New model…</option>';
+  $('model').innerHTML=h;
+  if(keep&&Array.prototype.some.call($('model').options,function(o){return o.value===keep}))$('model').value=keep;
+  var nm=$('newMake');if(!nm.options.length){var mh='<option value="">Choose make</option>';Object.keys(MAKES).forEach(function(k){mh+='<option value="'+k+'">'+esc(MAKES[k])+' ('+k+')</option>'});nm.innerHTML=mh}
+}
+function currentMake(){
+  var v=$('model').value;
+  if(v==='__new'){return $('newMake').value}
+  return makeFor(v)||(editingId&&v?((entries.find(function(x){return x.id===editingId})||{}).make||''):'');
+}
+function updateMakeBox(){
+  var mk=currentMake(),box=$('makeBox'),has=$('model').value;
+  if(mk)box.innerHTML='<span class="code">'+esc(mk)+'</span><span class="nm">'+esc(makeName(mk))+'</span>';
+  else box.innerHTML='<span class="code">—</span><span class="nm">'+(has==='__new'?'Choose the make below':'Pick a model')+'</span>';
+}
+function buildStatic(){
+  $('pTime').innerHTML=opts(TIMES,true);$('rTime').innerHTML=opts(TIMES,true);
+  $('deliv').innerHTML=opts(LOCS,true);$('coll').innerHTML=opts(LOCS,true);
+  $('special').innerHTML=opts(SPECIAL,true);
+  ['pTime','rTime','deliv','coll','special'].forEach(wireOther);
+  var g='';GROUPS.forEach(function(x,i){g+='<label><input type="radio" name="grp" value="'+x[0]+'"'+(i===0?' checked':'')+'><span>'+esc(x[1])+'</span></label>'});$('group').innerHTML=g;
+  var c='<label class="sw"><input type="radio" name="clr" value="" checked><span>None</span></label>';
+  COLORS.forEach(function(x){c+='<label class="sw"><input type="radio" name="clr" value="'+x[0]+'"><span><b style="background:'+x[2]+'"></b>'+x[0]+'</span></label>'});$('colors').innerHTML=c;
+  fillModelSelect();updateMakeBox();
+}
+function radioVal(name){var r=document.querySelector('input[name="'+name+'"]:checked');return r?r.value:''}
+function setRadio(name,v){var r=document.querySelector('input[name="'+name+'"][value="'+(v||'')+'"]');if(r)r.checked=true}
+
+var collTouched=false;
+function resetForm(keepContext){
+  editingId=null;
+  var last=lsGet('pahb.lastReturn')||'';
+  setVal('team','');$('num').value=1;$('unit').value='';
+  $('model').value='';$('newModelBox').hidden=true;$('newModel').value='';$('newMake').value='';
+  setRadio('clr','');$('retd').checked=false;
+  if(!keepContext){
+    $('pDate').value=today();$('rDate').value=last;
+    setVal('pTime','12:00PM');setVal('rTime','1:00PM');setVal('deliv','JFTB-Los Alamitos');setVal('coll','JFTB-Los Alamitos');
+    setRadio('grp','');setVal('special','');collTouched=false;
+  }else{setRadio('grp','');setVal('special','')}
+  fillModelSelect();updateMakeBox();
+  $('editBanner').hidden=true;$('del').hidden=true;$('cancel').hidden=true;$('save').textContent='Save entry';disarm();
+}
+function loadForm(e){
+  editingId=e.id;fillModelSelect();
+  fillTeamSelect();setVal('team',e.team);$('num').value=e.num||1;$('unit').value=e.unit||'';
+  $('pDate').value=e.pDate||'';$('rDate').value=e.rDate||'';
+  setVal('pTime',e.pTime);setVal('rTime',e.rTime);setVal('deliv',e.deliv);setVal('coll',e.coll);setVal('special',e.special);
+  setRadio('grp',e.group);setRadio('clr',e.color);$('retd').checked=!!e.retd;
+  $('newModelBox').hidden=true;
+  fillModelSelect();$('model').value=e.model||'';updateMakeBox();
+  collTouched=true;
+  $('editBanner').hidden=false;$('editBanner').textContent='Editing '+(e.team||'entry')+(e.num?' #'+e.num:'')+'. Change anything and save.';
+  $('del').hidden=false;$('cancel').hidden=false;$('save').textContent='Save changes';disarm();
+}
+var armed=false;
+function disarm(){armed=false;$('del').textContent='Delete';$('del').classList.remove('armed')}
+
+function readForm(){
+  var model=$('model').value,make='';
+  if(model==='__new'){model=$('newModel').value.trim().toUpperCase();make=$('newMake').value}
+  else make=makeFor(model)||currentMake();
+  var old=editingId?entries.find(function(x){return x.id===editingId}):null;
+  return {id:editingId||newId(),team:getVal('team'),num:parseInt($('num').value,10)||'',
+    pDate:$('pDate').value,pTime:getVal('pTime'),deliv:getVal('deliv'),rDate:$('rDate').value,rTime:getVal('rTime'),coll:getVal('coll'),
+    group:radioVal('grp'),special:getVal('special'),unit:$('unit').value.trim().toUpperCase(),model:model,make:make,color:radioVal('clr'),
+    retd:$('retd').checked,order:old?old.order:Date.now()};
+}
+
+/* ---------- log ---------- */
+function tstate(e){if(!e.pDate||e.retd)return 0;var t=today();return e.pDate===t?1:(e.pDate===addDays(t,1)?2:0)}
+function renderStats(){
+  var t0=0,t1=0,out=0;entries.forEach(function(e){var s=tstate(e);if(s===1)t0++;if(s===2)t1++;if(!e.retd)out++});
+  $('stats').innerHTML='<div class="stat"><b>'+entries.length+'</b><span>Vehicles</span></div>'+
+    '<div class="stat'+(t0?' hot':'')+'"><b>'+t0+'</b><span>Today</span></div>'+
+    '<div class="stat"><b>'+t1+'</b><span>Tomorrow</span></div>'+
+    '<div class="stat"><b>'+out+'</b><span>Out</span></div>';
+  $('tabLogSub').textContent=entries.length+' vehicle'+(entries.length===1?'':'s');
+}
+function renderPills(){
+  var defs=[['all','All'],['t0','Pickup today'],['t1','Pickup tomorrow'],['out','Not returned'],['done','Returned']];
+  $('pills').innerHTML=defs.map(function(d){return '<button type="button" class="pill" data-f="'+d[0]+'" aria-pressed="'+(filter===d[0])+'">'+d[1]+'</button>'}).join('');
+}
+function renderCards(){
+  var list=entries.slice().sort(function(a,b){return (b.order||0)-(a.order||0)});
+  var q=query.trim().toLowerCase();
+  list=list.filter(function(e){
+    var s=tstate(e);
+    if(filter==='t0'&&s!==1)return false;if(filter==='t1'&&s!==2)return false;
+    if(filter==='out'&&e.retd)return false;if(filter==='done'&&!e.retd)return false;
+    if(q&&[e.team,e.unit,e.model,e.make,e.color,e.special,e.deliv].join(' ').toLowerCase().indexOf(q)<0)return false;
+    return true;
+  });
+  if(!list.length){
+    $('cards').innerHTML='<div class="empty" style="grid-column:1/-1"><b>'+(entries.length?'Nothing matches':'No vehicles logged yet')+'</b>'+(entries.length?'Clear the search or choose All.':'Add the first one on the New entry tab, or load your spreadsheet from the Export tab.')+'</div>';return;
+  }
+  $('cards').innerHTML=list.map(function(e){
+    var s=tstate(e),cls='card'+(s===1?' t0':s===2?' t1':'')+(e.retd?' done':'');
+    var tag=e.retd?'<span class="tag ret">Returned</span>':s===1?'<span class="tag t0">Pickup today</span>':s===2?'<span class="tag t1">Pickup tomorrow</span>':'';
+    var grp=(GROUPS.find(function(g){return g[0]===e.group&&g[0]})||[])[1];
+    var car=[e.make,e.model].filter(Boolean).join(' ');
+    var dot=e.color?'<span class="c-dot" style="background:'+(COLOR_HEX[e.color]||'#888')+'"></span>'+esc(e.color):'';
+    return '<article class="'+cls+'" data-id="'+esc(e.id)+'"><div class="c-top"><div class="c-team">'+esc(e.team||'(no name)')+(e.num?' <span class="c-num">#'+esc(e.num)+'</span>':'')+'</div>'+tag+'</div>'+
+      '<div class="c-meta">'+esc(short(e.pDate)||'No date')+(e.pTime?' '+esc(e.pTime):'')+' → '+esc(short(e.rDate)||'?')+(e.rTime?' '+esc(e.rTime):'')+'<br>'+esc(e.deliv||'')+(e.coll&&e.coll!==e.deliv?' → '+esc(e.coll):'')+'</div>'+
+      '<div class="c-veh"><span class="c-unit">'+esc(e.unit||'NO UNIT YET')+'</span><span class="c-car">'+esc(car)+' '+dot+'</span></div>'+
+      '<div class="c-meta">'+[grp,e.special&&'Request: '+e.special].filter(Boolean).map(esc).join(' · ')+'</div>'+
+      '<div class="c-actions"><button type="button" data-act="edit">Edit</button><button type="button" data-act="ret">'+(e.retd?'Mark out':'Mark returned')+'</button></div></article>';
+  }).join('');
+}
+function fillTeamSelect(){
+  var sel=$('team'),keep=sel.options.length?getVal('team'):'';
+  var list=TEAMS.slice(),seen={};list.forEach(function(t){seen[t]=1});
+  entries.forEach(function(e){if(e.team&&!seen[e.team]){seen[e.team]=1;list.push(e.team)}});
+  var h='<option value="">Choose a team</option>';
+  list.forEach(function(t){h+='<option value="'+esc(t)+'">'+esc(t)+'</option>'});
+  sel.innerHTML=h+'<option value="__other">Other…</option>';
+  setVal('team',keep);
+}
+function renderDatalist(){fillTeamSelect()}
+function renderAll(){renderStats();renderPills();renderCards();renderDatalist();$('xlsxNote').textContent=entries.length+' entr'+(entries.length===1?'y':'ies')+' will be included.'}
+
+/* ---------- export ---------- */
+var HEAD1=['','','Rental Arrival Information','','','Rental Return Information','','','S','M','V','O','','','','','','','',''];
+var HEAD2=['Team/Name','#','Date','Time','Delivery Address','Date','Time','Collection Address','Car Group','','','','Special Request','Vehicle Unit #','Make/Model/Color',"Ret'd",'','Make','Model','Color'];
+var HEAD3=['','','','','','','','','Sedan','Mini Van/ SUV','15PAX VAN','other','','','','','','','',''];
+function sorted(){return entries.slice().sort(function(a,b){return (a.order||0)-(b.order||0)})}
+function rowFor(e,asText){
+  var mk=e.make||makeFor(e.model);
+  var mmc=e.model?[mk,e.model,e.color].filter(Boolean).join('-'):'';
+  var d1=e.pDate?(asText?(+e.pDate.slice(5,7))+'/'+(+e.pDate.slice(8))+'/'+e.pDate.slice(0,4):serial(e.pDate)):'';
+  var d2=e.rDate?(asText?(+e.rDate.slice(5,7))+'/'+(+e.rDate.slice(8))+'/'+e.rDate.slice(0,4):serial(e.rDate)):'';
+  return [e.team||'',e.num||'',d1,e.pTime||'',e.deliv||'',d2,e.rTime||'',e.coll||'',
+    e.group==='S'?1:'',e.group==='M'?1:'',e.group==='V'?1:'',e.group==='O'?1:'',e.special||'',e.unit||'',mmc,e.retd?'Y':'','',mk||'',e.model||'',e.color||''];
+}
+function stamp(){var d=new Date();return MON[d.getMonth()]+'_'+pad(d.getDate())}
+function sheetRows(){var rows=[HEAD1,HEAD2,HEAD3];sorted().forEach(function(e){rows.push(rowFor(e,false))});return rows}
+function xlsxOpts(){return {sheetName:'Rentals',headerRows:3,dateCols:[2,5],centerCols:[1,3,6,8,9,10,11,15,19],widths:[30,5,11,9,20,11,9,20,7,7,7,7,15,13,24,7,3,8,12,7],merges:['C1:E1','F1:H1','I2:L2'],freeze:[2,3]}}
+async function saveBlob(name,blob){
+  var file=null;try{file=new File([blob],name,{type:blob.type})}catch(e){}
+  if(file&&navigator.canShare&&navigator.share){
+    try{
+      if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return 'shared'}
+    }catch(e){if(e&&e.name==='AbortError')return 'cancelled'}
+  }
+  var url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url)},8000);
+  return 'download';
+}
+function markExported(){dirty=0;saveLocal();setSync()}
+async function exportXlsx(){
+  if(!entries.length){toast('Nothing to export yet.',true);return}
+  var blob;try{blob=MiniXlsx.write(sheetRows(),xlsxOpts())}catch(e){showDiag('export: '+((e&&e.message)||e));return}
+  var r=await saveBlob('2026_PAHB_RENTAL_VEHICLES_JFTB_'+stamp()+'.xlsx',blob);
+  if(r==='cancelled')return;
+  markExported();toast(r==='shared'?'Choose where to save it':'Excel file created. Look in your Downloads');
+}
+async function exportCsv(){
+  if(!entries.length){toast('Nothing to export yet.',true);return}
+  var rows=[HEAD2].concat(sorted().map(function(e){return rowFor(e,true)}));
+  var blob=new Blob(['\uFEFF'+MiniXlsx.toCsv(rows)],{type:'text/csv'});
+  var r=await saveBlob('2026_PAHB_RENTAL_VEHICLES_JFTB_'+stamp()+'.csv',blob);
+  if(r==='cancelled')return;
+  markExported();toast(r==='shared'?'Choose where to save it':'CSV file created. Look in your Downloads');
+}
+async function copyRows(){
+  if(!entries.length){toast('Nothing to copy yet.',true);return}
+  var txt=sorted().map(function(e){return rowFor(e,true).join('\t')}).join('\n');
+  var box=$('copyBox');box.value=txt;
+  try{await navigator.clipboard.writeText(txt);toast('Copied '+entries.length+' rows')}
+  catch(e){box.hidden=false;box.focus();box.select();toast('Press and hold in the box, then choose Copy.')}
+}
+function parseDate(v){
+  if(v===''||v==null)return '';
+  if(typeof v==='number')return fromSerial(v);
+  v=String(v).trim();var m;
+  m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]);
+  m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);if(m){var y=+m[3];if(y<100)y+=2000;return y+'-'+pad(+m[1])+'-'+pad(+m[2])}
+  m=v.match(/^(\d{1,2})[- ]([A-Za-z]{3})[A-Za-z]*[- ,]+(\d{2,4})$/);
+  if(m){var mi=-1;for(var i=0;i<12;i++){if(MON[i].toLowerCase()===m[2].toLowerCase())mi=i}
+    if(mi>=0){var yy=+m[3];if(yy<100)yy+=2000;return yy+'-'+pad(mi+1)+'-'+pad(+m[1])}}
+  return '';
+}
+function isHeaderRow(r){
+  return String(r[0]||'').trim()==='Team/Name'||/Rental (Arrival|Return)/.test(String(r[2]||''))||String(r[8]||'').trim()==='Sedan';
+}
+function addRows(rows){
+  var existing={};entries.forEach(function(e){existing[[e.team,e.unit,e.pDate].join('|')]=1});
+  var base=Date.now(),added=0,skipped=0,tasks=[];
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];while(r.length<20)r.push('');
+    if(isHeaderRow(r))continue;
+    if(!String(r[0]||'').trim()&&!String(r[13]||'').trim()&&!String(r[18]||'').trim())continue;
+    var model=String(r[18]||'').trim().toUpperCase();
+    var mk=String(r[17]||'').trim().toUpperCase();if(!MAKES[mk])mk=makeFor(model);
+    var grp=r[8]?'S':r[9]?'M':r[10]?'V':r[11]?'O':'';
+    var e={id:newId()+i,team:String(r[0]||'').trim(),num:(r[1]===''||isNaN(+r[1]))?'':+r[1],pDate:parseDate(r[2]),pTime:normTime(r[3]),deliv:String(r[4]||'').trim(),
+      rDate:parseDate(r[5]),rTime:normTime(r[6]),coll:String(r[7]||'').trim(),group:grp,special:String(r[12]||'').trim(),unit:String(r[13]||'').trim().toUpperCase(),
+      model:model,make:mk,color:String(r[19]||'').trim().toUpperCase(),retd:!!String(r[15]||'').trim(),order:base+i};
+    var key=[e.team,e.unit,e.pDate].join('|');
+    if(existing[key]){skipped++;continue}
+    existing[key]=1;added++;tasks.push(e);
+  }
+  return (async function(){
+    for(var k=0;k<tasks.length;k++){await putEntry(tasks[k])}
+    var msg='Imported '+added+' row'+(added===1?'':'s')+(skipped?', skipped '+skipped+' already in the log':'');
+    $('impNote').textContent=msg+'.';$('pasteNote').textContent=msg+'.';toast(msg);
+    return added;
+  })();
+}
+function importFile(file){
+  var fr=new FileReader();
+  fr.onerror=function(){toast('That file could not be opened.',true)};
+  fr.onload=function(){
+    var rows,u=new Uint8Array(fr.result);
+    try{
+      if(u[0]===0xD0&&u[1]===0xCF&&u[2]===0x11&&u[3]===0xE0){toast('Old .xls files are not supported. In Excel, choose Save As, then Excel Workbook (.xlsx).',true);return}
+      if(MiniXlsx.isZip(fr.result))rows=MiniXlsx.read(fr.result,'Rentals');
+      else rows=MiniXlsx.parseCsv(new TextDecoder('utf-8').decode(u));
+    }catch(err){toast('That file could not be read. '+((err&&err.message)||''),true);return}
+    addRows(rows).then(function(n){if(!n)toast('No new rows found in that file.',true)});
+  };
+  fr.readAsArrayBuffer(file);
+}
+function importPaste(){
+  var txt=$('pasteBox').value;
+  if(!txt.trim()){toast('Paste the copied rows first.',true);return}
+  var rows=txt.replace(/\r/g,'').split('\n').map(function(l){return l.split('\t')});
+  addRows(rows).then(function(n){if(n){$('pasteBox').value=''}else{toast('No new rows found in the pasted text.',true)}});
+}
+
+/* ---------- events ---------- */
+function showTab(name){
+  ['new','log','export'].forEach(function(t){$('view-'+t).hidden=t!==name});
+  Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){b.setAttribute('aria-selected',b.dataset.tab===name)});
+  window.scrollTo(0,0);
+}
+function bind(){
+  document.querySelector('.nav').addEventListener('click',function(ev){var b=ev.target.closest('button');if(b)showTab(b.dataset.tab)});
+  $('model').addEventListener('change',function(){$('newModelBox').hidden=$('model').value!=='__new';updateMakeBox()});
+  $('newMake').addEventListener('change',updateMakeBox);
+  $('numUp').addEventListener('click',function(){$('num').value=(parseInt($('num').value,10)||0)+1});
+  $('numDn').addEventListener('click',function(){$('num').value=Math.max(1,(parseInt($('num').value,10)||2)-1)});
+  $('team').addEventListener('change',function(){
+    if(editingId)return;var t=getVal('team').toLowerCase();if(!t)return;
+    var mx=0,hit=false;entries.forEach(function(e){if((e.team||'').toLowerCase()===t){hit=true;mx=Math.max(mx,+e.num||0)}});
+    $('num').value=hit?mx+1:1;
+  });
+  $('deliv').addEventListener('change',function(){if(!collTouched){setVal('coll',getVal('deliv'))}});
+  $('deliv-other').addEventListener('input',function(){if(!collTouched){setVal('coll',getVal('deliv'))}});
+  $('coll').addEventListener('change',function(){collTouched=true});
+  $('f').addEventListener('submit',async function(ev){
+    ev.preventDefault();
+    var e=readForm();
+    if(!e.team){toast('Choose the team first.',true);$('team').focus();return}
+    if(!e.pDate){toast('Pick a pickup date.',true);$('pDate').focus();return}
+    if($('model').value==='__new'){
+      if(!e.model){toast('Type the new model name.',true);$('newModel').focus();return}
+      if(!e.make){toast('Choose the make for the new model.',true);$('newMake').focus();return}
+      await putModel(e.model,e.make);
+    }
+    var wasEdit=!!editingId;
+    if(e.rDate)lsSet('pahb.lastReturn',e.rDate);
+    putEntry(e);
+    toast(wasEdit?'Changes saved':'Saved '+e.team+(e.num?' #'+e.num:''));
+    resetForm(true);
+    if(wasEdit)showTab('log'); else { var next=(+e.num||0)+1; setVal('team',e.team); $('num').value=next; $('unit').focus({preventScroll:true}); }
+  });
+  $('cancel').addEventListener('click',function(){resetForm(false);showTab('log')});
+  $('del').addEventListener('click',function(){
+    if(!armed){armed=true;$('del').textContent='Tap again to delete';$('del').classList.add('armed');return}
+    var id=editingId;resetForm(false);removeEntry(id);toast('Entry deleted');showTab('log');
+  });
+  $('q').addEventListener('input',function(){query=$('q').value;renderCards()});
+  $('pills').addEventListener('click',function(ev){var b=ev.target.closest('.pill');if(!b)return;filter=b.dataset.f;renderPills();renderCards()});
+  $('cards').addEventListener('click',function(ev){
+    var card=ev.target.closest('.card');if(!card)return;
+    var e=entries.find(function(x){return x.id===card.dataset.id});if(!e)return;
+    var act=ev.target.closest('button');
+    if(act&&act.dataset.act==='ret'){var c={};for(var k in e)c[k]=e[k];c.retd=!e.retd;putEntry(c);return}
+    loadForm(e);showTab('new');
+  });
+  $('xlsx').addEventListener('click',exportXlsx);
+  $('csv').addEventListener('click',exportCsv);
+  $('copy').addEventListener('click',copyRows);
+  $('pasteGo').addEventListener('click',importPaste);
+  ['imp','imp2','imp3'].forEach(function(id){$(id).addEventListener('change',function(){if(this.files[0])importFile(this.files[0]);this.value=''})});
+}
+
+var VERSION='home screen version 1';
+function showDiag(msg){var d=$('diag');if(d){d.hidden=false;d.textContent='Something went wrong: '+msg+'. Reload the page. If it keeps happening, send me this message.'}}
+window.addEventListener('error',function(ev){showDiag((ev&&ev.message)||'error')});
+window.addEventListener('unhandledrejection',function(ev){var r=ev&&ev.reason;showDiag((r&&(r.message||r.code))||'request failed')});
+function step(name,fn){try{fn()}catch(e){showDiag(name+': '+((e&&e.message)||e))}}
+$('nojs').hidden=true;$('ver').textContent=VERSION;
+step('tabs',bind);
+step('lists',function(){wireOther('team');fillTeamSelect();buildStatic()});
+step('form',function(){resetForm(false)});
+step('log',renderAll);
+step('storage',initStore);
+})();
+</script>
+
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
+</body>
+</html>
