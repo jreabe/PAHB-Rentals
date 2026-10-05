@@ -746,17 +746,18 @@ function renderStats(){
     '<div class="stat"><b>'+out+'</b><span>Out</span></div>';
   $('tabLogSub').textContent=entries.length+' vehicle'+(entries.length===1?'':'s');
 }
+function isJftb(e){return /jftb|los alamitos/i.test((e.deliv||'')+' '+(e.coll||''))}
 function renderPills(){
-  var defs=[['all','All'],['t0','Pickup today'],['t1','Pickup tomorrow'],['out','Not returned'],['done','Returned']];
+  var defs=[['all','All'],['t0','Pickup today'],['t1','Pickup tomorrow'],['jftb','JFTB only'],['out','Not returned'],['done','Returned']];
   $('pills').innerHTML=defs.map(function(d){return '<button type="button" class="pill" data-f="'+d[0]+'" aria-pressed="'+(filter===d[0])+'">'+d[1]+'</button>'}).join('');
 }
 function renderCards(){
-  var list=entries.slice().sort(function(a,b){return (b.order||0)-(a.order||0)});
+  var list=entries.slice().sort(function(a,b){var j=(isJftb(b)?1:0)-(isJftb(a)?1:0);return j||((b.order||0)-(a.order||0))});
   var q=query.trim().toLowerCase();
   list=list.filter(function(e){
     var s=tstate(e);
     if(filter==='t0'&&s!==1)return false;if(filter==='t1'&&s!==2)return false;
-    if(filter==='out'&&e.retd)return false;if(filter==='done'&&!e.retd)return false;
+    if(filter==='jftb'&&!isJftb(e))return false;if(filter==='out'&&e.retd)return false;if(filter==='done'&&!e.retd)return false;
     if(q&&[e.team,e.unit,e.model,e.make,e.color,e.special,e.deliv].join(' ').toLowerCase().indexOf(q)<0)return false;
     return true;
   });
